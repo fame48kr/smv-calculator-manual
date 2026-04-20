@@ -117,8 +117,10 @@ def get_proc_features(style: str, proc_index: dict, garment_type: str = 'top') -
         details.append('snap')
     if any(k in text for k in ['stud', 'attach stud', 'press stud', 'rivet']):
         details.append('stud')
-    if any(k in text for k in ['eyelet', 'attach eyelet', 'grommet']):
+    if any(k in text for k in ['eyelet', 'attach eyelet']):
         details.append('eyelet')
+    if any(k in text for k in ['grommet', 'attach grommet']):
+        details.append('grommet')
     if any(k in text for k in ['o ring', 'o-ring', 'd-ring', 'ring attach', 'attach ring']):
         details.append('O-ring')
     if any(k in text for k in ['yoke', 'attach yoke', 'join yoke', 'sew yoke']):
@@ -163,6 +165,8 @@ def get_proc_features(style: str, proc_index: dict, garment_type: str = 'top') -
         details.append('ears')
     if any(k in text for k in ['attach horn', 'sew horn', 'horn panel', 'horn attachment']):
         details.append('horn')
+    if any(k in text for k in ['sherpa', 'sherpa lining', 'attach sherpa', 'sew sherpa']):
+        details.append('sherpa lining')
 
     if details:
         f['details'] = details
