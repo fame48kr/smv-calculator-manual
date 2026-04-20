@@ -117,14 +117,22 @@ with col_right:
     cat3_opts = get_cat3_options(df_list, sel_cat1, sel_cat2)
     sel_cat3 = st.multiselect("Category #3 (optional)", cat3_opts, default=[], key="sel_cat3")
 
+detail_kw = st.text_input(
+    "🔖 Detail Keyword (optional, comma-separated)",
+    placeholder="e.g.: zipper, pocket, collar, raglan",
+    help="Styles with matching construction detail tags will be shown first.",
+    key="detail_kw"
+)
+
 search_btn = st.button("🔍 Search Similar Styles", type="primary")
 
 if search_btn:
     st.session_state['search_done'] = True
-    st.session_state['_genders']  = genders
-    st.session_state['_sel_cat1'] = sel_cat1
-    st.session_state['_sel_cat2'] = sel_cat2
-    st.session_state['_sel_cat3'] = sel_cat3
+    st.session_state['_genders']    = genders
+    st.session_state['_sel_cat1']   = sel_cat1
+    st.session_state['_sel_cat2']   = sel_cat2
+    st.session_state['_sel_cat3']   = sel_cat3
+    st.session_state['_detail_kw']  = detail_kw
 
 if not st.session_state.get('search_done'):
     st.info("Select Gender and Category, then click **Search Similar Styles**.")
@@ -211,6 +219,20 @@ if results.empty:
     st.warning("No results found. Try adjusting the category or keyword.")
     st.stop()
 
+# ── Detail keyword prioritization ────────────────────────────────
+_detail_kw = st.session_state.get('_detail_kw', '')
+_detail_kws = [k.strip().lower() for k in _detail_kw.split(',') if k.strip()] if _detail_kw else []
+
+if _detail_kws:
+    _pri_idx = build_process_index(df_proc)
+    def _detail_score(style_str):
+        pf = get_proc_features(STYLE_ALIAS.get(str(style_str).strip(), str(style_str).strip()), _pri_idx)
+        details = [d.lower() for d in pf.get('details', [])]
+        return sum(1 for kw in _detail_kws if any(kw in d for d in details))
+    results = results.copy()
+    results['_kw_score'] = results['STYLE'].apply(_detail_score)
+    results = results.sort_values('_kw_score', ascending=False).drop(columns='_kw_score').reset_index(drop=True)
+
 _cat1_label = ', '.join(sel_cat1) if sel_cat1 else 'All'
 _cat2_label = ', '.join(sel_cat2) if (use_cat2 and sel_cat2) else 'All'
 _cat3_label = ', '.join(sel_cat3) if (use_cat3 and sel_cat3) else 'All'
@@ -262,7 +284,16 @@ if _sec2_open:
                 pf = get_proc_features(_lookup, _grid_proc_index, garment_type='top')
                 details = pf.get('details', [])
                 if details:
-                    st.caption("📌 " + " · ".join(details))
+                    if _detail_kws:
+                        tagged = []
+                        for d in details:
+                            if any(kw in d.lower() for kw in _detail_kws):
+                                tagged.append(f"**:red[{d}]**")
+                            else:
+                                tagged.append(d)
+                        st.caption("📌 " + " · ".join(tagged))
+                    else:
+                        st.caption("📌 " + " · ".join(details))
 
                 is_selected = (st.session_state.selected_style == c['style'])
                 btn_label = "✅ Selected" if is_selected else "Select"
