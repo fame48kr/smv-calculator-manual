@@ -10,7 +10,7 @@ from image_extractor import load_image_index, get_image, get_image_by_style
 ENV_PATH = Path(__file__).parent / ".env"
 load_dotenv(ENV_PATH)
 
-st.set_page_config(page_title="CM Calculation Advisor", page_icon="✂️", layout="wide")
+st.set_page_config(page_title="CM Assistant", page_icon="✂️", layout="wide")
 
 # ── Access control ────────────────────────────────────────────────
 _APP_PASSWORD = st.secrets.get("APP_PASSWORD", "") if hasattr(st, "secrets") else os.environ.get("APP_PASSWORD", "")
@@ -28,7 +28,7 @@ if _APP_PASSWORD:
                 st.error("Incorrect password. Please try again.")
         st.stop()
 
-st.title("✂️ CM Calculation Advisor")
+st.title("✂️ CM Assistant")
 st.caption("Select Gender / Category → Find Similar Styles → Calculate CM")
 
 # Load data
