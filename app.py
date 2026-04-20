@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from data_loader import load_data, search_similar_styles, get_style_processes, build_process_index, get_proc_features, STYLE_ALIAS
-from cm_calculator import calculate_cm, FACTORIES, COUNTRY_FLAGS, WASH_OPTIONS
 from image_extractor import load_image_index, get_image, get_image_by_style
 
 ENV_PATH = Path(__file__).parent / ".env"
@@ -504,94 +503,3 @@ c1.metric("Included Processes", f"{len(included)}")
 c2.metric("Excluded Processes", f"{len(final_ws) - len(included)}")
 c3.metric("Process Analysis SMV", f"{current_smv:.4f} min")
 
-
-# ══════════════════════════════════════════════
-# STEP 4: CM Calculation
-# ══════════════════════════════════════════════
-st.header("④ CM Calculation")
-
-smv_mode = st.radio(
-    "SMV Source",
-    ["📋 Process Analysis", "✏️ Manual Input"],
-    horizontal=True,
-    key="smv_mode",
-    help="Use the SMV calculated from the process worksheet, or enter a value directly."
-)
-
-if smv_mode == "✏️ Manual Input":
-    total_smv = st.number_input(
-        "SMV (min)",
-        min_value=0.01, max_value=999.0,
-        value=round(current_smv, 4) if current_smv > 0 else 10.0,
-        step=0.01, format="%.4f",
-        key="manual_smv",
-        help="Enter the SMV value directly. Process worksheet is ignored."
-    )
-    st.caption(f"Process Analysis SMV (reference): **{current_smv:.4f} min**")
-else:
-    total_smv = current_smv
-
-if total_smv <= 0:
-    st.warning("Please check Total SMV.")
-    st.stop()
-
-col_l, col_r = st.columns(2)
-with col_l:
-    factory_list = list(FACTORIES.keys())
-    factory_name = st.selectbox("Select Factory", factory_list)
-    fac_info = FACTORIES[factory_name]
-    country = COUNTRY_FLAGS.get(fac_info['country'], fac_info['country'])
-    st.caption(f"{country} | BEP_AMT: ${fac_info['BEP_AMT']:,.2f} | Base Efficiency: {fac_info['E_FAC_EFFC']*100:.0f}% | Work Hours: {fac_info['FAC_WORKHOUR']} min")
-    qty_ord = st.number_input("Order Quantity (pcs)", min_value=1, value=5000, step=100)
-    lines = st.number_input("Number of Lines", min_value=1, max_value=40, value=1)
-
-with col_r:
-    wash_option = st.selectbox("GMT WASH / DYE", list(WASH_OPTIONS.keys()))
-    has_grp = st.checkbox("Graphic included")
-    has_emb = st.checkbox("Embroidery included")
-    st.write("")
-    calc_btn = st.button("🧮 Calculate CM", type="primary", use_container_width=True)
-
-if calc_btn:
-    result = calculate_cm(factory_name, total_smv, qty_ord, lines, wash_option, has_grp, has_emb)
-
-    st.divider()
-    st.subheader(f"📊 Results — {factory_name}")
-
-    r1, r2, r3, r4 = st.columns(4)
-    r1.metric("NET CM (Ideal)", f"${result['NET_CM']:.4f}")
-    r2.metric("WORKING CM ★", f"${result['WORKING_CM']:.4f}", help="Final CM with ramp-up applied")
-    r3.metric("Working Days", f"{result['DT_WORKING']:.2f} days")
-    r4.metric("Daily Output", f"{result['DAILY_PROD']:.0f} pcs")
-
-    with st.expander("Calculation Detail"):
-        st.code(f"""
-STEP 1  Daily Output = ({fac_info['FAC_WORKHOUR']} × {fac_info['FAC_SEWER']} × {result['FAC_EFFC']:.4f}) ÷ {total_smv:.4f}
-               = {result['DAILY_PROD']:.2f} pcs/day
-
-STEP 2  Working Days = Ramp-up 4 days + remaining ÷ daily output
-               = {result['DT_WORKING']:.2f} days  (Actual qty: {result['QTY_ORDER']:.0f} pcs, LOSS {result['LOSS']['total']*100:.2f}%)
-
-STEP 3  NET CM    = {fac_info['BEP_AMT']} × (1+{WASH_OPTIONS[wash_option]['add_wash']}×0.01) ÷ {result['DAILY_PROD']:.2f} − {fac_info['FAC_INLAND']}
-               = ${result['NET_CM']:.4f}
-
-STEP 4  WORKING CM = {result['DT_WORKING']:.2f} × {fac_info['BEP_AMT']} × (1+{WASH_OPTIONS[wash_option]['add_wash']}×0.01) ÷ {qty_ord:,} − {fac_info['FAC_INLAND']}
-               = ${result['WORKING_CM']:.4f}  ← Final CM
-        """)
-
-    st.subheader("🌏 Factory Comparison")
-    rows = []
-    for fname in FACTORIES:
-        r = calculate_cm(fname, total_smv, qty_ord, lines, wash_option, has_grp, has_emb)
-        fd = FACTORIES[fname]
-        rows.append({
-            'Factory': fname,
-            'Country': COUNTRY_FLAGS.get(fd['country'], fd['country']),
-            'NET CM ($)': round(r['NET_CM'], 4),
-            'WORKING CM ($)': round(r['WORKING_CM'], 4),
-            'Working Days': round(r['DT_WORKING'], 2),
-            'Daily Output': int(r['DAILY_PROD']),
-            'Efficiency (%)': round(r['FAC_EFFC']*100, 2),
-        })
-    df_cmp = pd.DataFrame(rows).sort_values('WORKING CM ($)')
-    st.dataframe(df_cmp, use_container_width=True, hide_index=True)
