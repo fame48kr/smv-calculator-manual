@@ -1,4 +1,4 @@
-"""CM Calculator — Manual Category Selection"""
+"""CM Assistant — Manual Category Selection"""
 import streamlit as st
 import pandas as pd
 import os
@@ -17,7 +17,7 @@ _APP_PASSWORD = st.secrets.get("APP_PASSWORD", "") if hasattr(st, "secrets") els
 
 if _APP_PASSWORD:
     if not st.session_state.get("_authenticated"):
-        st.title("✂️ CM Calculator")
+        st.title("✂️ CM Assistant")
         st.markdown("### Please enter the access password")
         _pwd_input = st.text_input("Password", type="password", key="_pwd_input")
         if st.button("Login", type="primary"):
@@ -26,6 +26,12 @@ if _APP_PASSWORD:
                 st.rerun()
             else:
                 st.error("Incorrect password. Please try again.")
+        st.markdown("---")
+        st.warning(
+            "⚠️ This system contains proprietary data that is a valuable asset of Yakjin. "
+            "Access is strictly restricted to authorized personnel only. "
+            "Sharing or distributing this information to other vendors or external parties is strictly prohibited."
+        )
         st.stop()
 
 st.title("✂️ CM Assistant")
