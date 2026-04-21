@@ -121,6 +121,8 @@ def get_proc_features(style: str, proc_index: dict, garment_type: str = 'top') -
         details.append('eyelet')
     if any(k in text for k in ['grommet', 'attach grommet']):
         details.append('grommet')
+    if any(k in text for k in ['keyhole', 'key hole', 'attach keyhole', 'keyhole opening']):
+        details.append('key hole')
     if any(k in text for k in ['o ring', 'o-ring', 'd-ring', 'ring attach', 'attach ring']):
         details.append('O-ring')
     if any(k in text for k in ['yoke', 'attach yoke', 'join yoke', 'sew yoke']):
